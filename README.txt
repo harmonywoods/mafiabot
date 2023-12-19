@@ -11,6 +11,7 @@ Send messages
 Manage channels
 Manage roles
 View channels
+Use Slash Commands
 and copy the link @ the bottom
 Invite the bot to the server you want it to run games on, and then run the script. 
 Commands:

@@ -1,17 +1,18 @@
-#TODO: test, write up, let deadline be set in daystart
 import discord
 from discord.ext import tasks
 import re
 from config import token, mod_role_name
 import time
-def votecount():
+import asyncio
+def votecount_str():
     output = 'Votecount: \n'
     if ourGame.possible_votes == []:
-        raise Exception("Votecount requested without game start")
+        return "Votecount requested without game start"
     for player in ourGame.possible_votes:
         output += player + " " + str(len(ourGame.votes[player])) + ": " + ', '.join(ourGame.votes[player]) + "\n"
     return output
 help_message = help_message = '''Commands:
+These are all slash commands except /debug
 Anyone can trigger (inside OR outside the game channel):
 /votecount triggers a votecount
 /debug prints some useful debugging information to the console
@@ -43,6 +44,7 @@ class Game:
         return ','.join(self.player_list) + '|' + ','.join(self.possible_votes) + ','.join(self.votes)
 class MyClient(discord.Client):
     async def on_ready(self):
+        await tree.sync()
         print(f'Mafia bot online as {self.user} (ID: {self.user.id})')
     async def setup_hook(self) -> None:
         # start the task to run in the background
@@ -107,11 +109,54 @@ class MyClient(discord.Client):
         await ourGame.game_channel.send("EOD")
         ourGame.day_start = None
         await ourGame.game_channel.edit(overwrites = {ourGame.player_role:discord.PermissionOverwrite(send_messages=False)})
-        await ourGame.game_channel.send(votecount())
+        await ourGame.game_channel.send(votecount_str())
 ourGame = Game()
 intents = discord.Intents.default()
 intents.message_content = True
 intents.members = True
 client = MyClient(intents=intents)
+tree = discord.app_commands.CommandTree(client)
+@discord.app_commands.command()
+async def vote(interaction: discord.Interaction, vote: str):
+    if vote in ourGame.possible_votes and interaction.user.nick in ourGame.player_list:
+        await interaction.response.send_message('vote for ' + vote + ' recorded')
+        ourGame.votes[vote].append(interaction.user.nick)
+        if len(ourGame.votes[vote]) > len(ourGame.player_list)/2:
+            await ourGame.game_channel.send("HAMMER")
+            await client.end_day()
+        else:
+            await interaction.response.send_message('invalid vote')
+tree.add_command(vote)
+@discord.app_commands.command()
+async def votecount(interaction: discord.Interaction):
+    await interaction.response.send_message(votecount_str())
+tree.add_command(votecount)
+@discord.app_commands.command()
+async def help(interaction: discord.Interaction):
+    await interaction.response.send_message(help_message)
+tree.add_command(help)
+@discord.app_commands.command()
+async def daystart(interaction: discord.Interaction, player_role_name: str, length:float):
+    if mod_role_name in [role.name for role in interaction.user.roles]:
+        roles = [role for role in interaction.guild.roles]
+        player_role = [role for role in roles if role.name == player_role_name.strip()][0]
+        members = await interaction.guild.chunk()
+        player_list = [user.nick for user in members if player_role.name in [role.name for role in user.roles]]
+        #reset game
+        ourGame.player_list = player_list
+        ourGame.possible_votes = player_list + ['no elimination']
+        ourGame.votes = {i : [] for i in ourGame.possible_votes}
+        ourGame.votes['no vote'] = player_list
+        ourGame.player_role = player_role
+        ourGame.game_channel = interaction.channel
+        ourGame.day_length = 60 * 60 * float(length)
+        await interaction.channel.edit(overwrites = {player_role:discord.PermissionOverwrite(send_messages=True)})
+        ourGame.day_start = time.time()
+        await interaction.response.send_message("successfully started")
+    else: 
+        await interaction.response.send_message("not a mod")
+# Can also specify a guild here, but this example chooses not to.
+
+tree.add_command(daystart)
 client.run(token)
 print('haha')

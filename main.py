@@ -79,6 +79,8 @@ client = MyClient(intents=intents)
 tree = discord.app_commands.CommandTree(client)
 @discord.app_commands.command()
 async def vote(interaction: discord.Interaction, vote: str):
+    print(vote)
+    print([i.id for i in ourGame.player_list])
     if interaction.user in ourGame.player_list:
         if vote == 'no elimination' or vote in [i.name for i in ourGame.player_list]:
             for possible_vote in ourGame.possible_votes:
@@ -92,6 +94,14 @@ async def vote(interaction: discord.Interaction, vote: str):
                 await client.end_day()
         elif vote in [i.nick for i in ourGame.player_list]:
             user_voted_for = [i for i in ourGame.player_list if i.nick == vote][0]
+            await interaction.response.send_message('vote for ' + user_voted_for.nick + ' recorded')
+            ourGame.votes[user_voted_for].append(interaction.user)
+            if len(ourGame.votes[user_voted_for]) > len(ourGame.player_list)/2:
+                await ourGame.game_channel.send("HAMMER")
+                await client.end_day()
+        elif int(vote[2:-1]) in [i.id for i in ourGame.player_list]:
+            
+            user_voted_for = [i for i in ourGame.player_list if i.id == int(vote[2:-1])][0]
             await interaction.response.send_message('vote for ' + user_voted_for.nick + ' recorded')
             ourGame.votes[user_voted_for].append(interaction.user)
             if len(ourGame.votes[user_voted_for]) > len(ourGame.player_list)/2:

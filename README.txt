@@ -6,6 +6,7 @@ To set up, go to your developer portal, set up a new application, get your token
 Put your API token and mod_role_name values in config.py - for instance:
 token = 'token here'
 mod_role_name = 'mod role name here'
+Alternatively, you can set environment variables (if you're using something like Docker). In this case, set the environment variables TOKEN and MODROLENAME to the appropriate values
 Generate an invite link by going OAuth2 -> URL Generator, select bot and then select:
 Send messages
 Manage channels

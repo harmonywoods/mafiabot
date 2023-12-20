@@ -1,9 +1,15 @@
 import discord
 from discord.ext import tasks
 import re
-from config import token, mod_role_name
 import time
 import asyncio
+import os
+#handle getting token & mod_role_name environment variables
+if 'TOKEN' in os.environ and 'MODROLENAME' in os.environ:
+    token = os.environ['TOKEN']
+    mod_role_name = os.environ['MODROLENAME']
+else:
+    from config import token, mod_role_name
 def votecount_str():
     output = 'Votecount: \n'
     if ourGame.possible_votes == []:
@@ -79,8 +85,7 @@ client = MyClient(intents=intents)
 tree = discord.app_commands.CommandTree(client)
 @discord.app_commands.command()
 async def vote(interaction: discord.Interaction, vote: str):
-    print(vote)
-    print([i.id for i in ourGame.player_list])
+    #TODO: clean this part up
     if interaction.user in ourGame.player_list:
         if vote == 'no elimination' or vote in [i.name for i in ourGame.player_list]:
             for possible_vote in ourGame.possible_votes:
@@ -100,7 +105,6 @@ async def vote(interaction: discord.Interaction, vote: str):
                 await ourGame.game_channel.send("HAMMER")
                 await client.end_day()
         elif int(vote[2:-1]) in [i.id for i in ourGame.player_list]:
-            
             user_voted_for = [i for i in ourGame.player_list if i.id == int(vote[2:-1])][0]
             await interaction.response.send_message('vote for ' + user_voted_for.nick + ' recorded')
             ourGame.votes[user_voted_for].append(interaction.user)
@@ -122,6 +126,7 @@ async def help(interaction: discord.Interaction):
 tree.add_command(help)
 @discord.app_commands.command()
 async def daystart(interaction: discord.Interaction, player_role_name: str, length:float):
+    #TODO: support pinging player role
     try:
         if mod_role_name in [role.name for role in interaction.user.roles]:
             roles = [role for role in interaction.guild.roles]
